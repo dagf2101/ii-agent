@@ -11,6 +11,7 @@ import argparse
 import logging
 import asyncio
 from dotenv import load_dotenv
+import glob
 
 load_dotenv()
 
@@ -31,9 +32,38 @@ from ii_agent.llm.context_manager.amortized_forgetting import (
 )
 from ii_agent.llm.token_counter import TokenCounter
 from ii_agent.db.manager import DatabaseManager
+from ii_agent.llm.base import TextPrompt
 
 MAX_OUTPUT_TOKENS_PER_TURN = 32768
 MAX_TURNS = 200
+
+
+async def preload_context_files(agent, context_dir="/app/context/"):
+    """Load all files from the context directory into the agent's memory tool if available, or as system messages."""
+    import os
+    logger = getattr(agent, 'logger_for_agent_logs', None)
+    if not os.path.exists(context_dir):
+        if logger:
+            logger.info(f"Context directory {context_dir} does not exist. No context files loaded.")
+        return
+    files = sorted(glob.glob(os.path.join(context_dir, "*")))
+    for file_path in files:
+        if os.path.isfile(file_path):
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            memory_tool = None
+            for tool in getattr(agent, 'tool_manager', []).get_tools():
+                if getattr(tool, 'name', None) == 'simple_memory':
+                    memory_tool = tool
+                    break
+            if memory_tool:
+                memory_tool.run({"action": "write", "content": content})
+                if logger:
+                    logger.info(f"Loaded context file into memory tool: {file_path}")
+            else:
+                agent.history.add_user_turn([TextPrompt(f"[CONTEXT FILE: {os.path.basename(file_path)}]\n{content}")])
+                if logger:
+                    logger.info(f"Added context file as system message: {file_path}")
 
 
 async def async_main():
@@ -155,6 +185,9 @@ async def async_main():
         max_turns=MAX_TURNS,
         session_id=session_id,  # Pass the session_id from database manager
     )
+
+    # Preload context files before starting the main loop
+    await preload_context_files(agent)
 
     # Create background task for message processing
     message_task = agent.start_message_processing()

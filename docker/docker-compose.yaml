@@ -26,7 +26,13 @@ services:
       - PROJECT_ID=${PROJECT_ID}
       - REGION=${REGION}
       - WORKSPACE_PATH=${WORKSPACE_PATH}
+      #Custom variables      
+      - CONTEXT_PATH=${WORKSPACE_PATH}/.context
+      - OPENAI_BASE_URL
+      - MODEL_FILENAME
     volumes:
       - ${WORKSPACE_PATH:-../workspace}:/app/workspace
       #If file doesn't exist, use a dummy file
       - ${GOOGLE_APPLICATION_CREDENTIALS:-.dummy-credentials.json}:/app/google-application-credentials.json
+      # Context preloading: mount .context to /app/context/ as read-only
+      - ${CONTEXT_PATH:-../.context}:/app/context:ro
