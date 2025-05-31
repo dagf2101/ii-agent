@@ -30,3 +30,5 @@ services:
       - ${WORKSPACE_PATH:-../workspace}:/app/workspace
       #If file doesn't exist, use a dummy file
       - ${GOOGLE_APPLICATION_CREDENTIALS:-.dummy-credentials.json}:/app/google-application-credentials.json
+      # Context preloading: mount .context to /app/context/ as read-only
+      - ${CONTEXT_PATH:-.context}:/app/context:ro
