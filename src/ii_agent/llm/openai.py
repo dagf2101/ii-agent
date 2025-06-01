@@ -241,9 +241,7 @@ class OpenAIDirectClient(LLMClient):
         content = openai_response_message.content
 
         # Exactly one of tool_calls or content should be present
-        if tool_calls and content:
-            raise ValueError("Only one of tool_calls or content should be present")
-        elif not tool_calls and not content:
+        if not tool_calls and not content:
             raise ValueError("Either tool_calls or content should be present")
 
         if tool_calls:
